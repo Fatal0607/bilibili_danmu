@@ -10,14 +10,14 @@ async function fetchPrimaryDisplay() {
 }
 
 export const useStore = defineStore('storeId', {
-    state: () => {
+    state:  () => {
         return {
             danmuSettings: {
                 fontSize: 16,
                 color: '#ffffff',
                 opacity: 0.8,
                 displayArea: 0.5,
-                display: fetchPrimaryDisplay(),
+                display: null,
                 speed: 10
             }
         }

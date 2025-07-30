@@ -65,30 +65,6 @@ function createWindow() {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
 
-  const danmuWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
-    show: false,
-    autoHideMenuBar: true,
-    menuBarVisible: false,
-    frame: false,
-    ...(process.platform === 'linux' ? { icon } : {}),
-    webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
-      sandbox: false
-    }
-  })
-
-  danmuWindow.on('ready-to-show', () => {
-    setTimeout(() => {
-      danmuWindow.show()
-    }, 1000)
-  })
-    if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    danmuWindow.loadURL(process.env['ELECTRON_RENDERER_URL'] + '/#/danmu')
-  } else {
-    danmuWindow.loadFile(join(__dirname, '../renderer/index.html'))
-  }
 
 }
 
@@ -131,4 +107,38 @@ app.on('window-all-closed', () => {
 ipcMain.handle('get-display-info', async () => {
   updateDisplayInfo(); // 确保获取最新信息
   return displayInfo;
+});
+
+let danmuWindow = null;
+// 为渲染进程提供显示器信息的 IPC 接口
+ipcMain.handle('show-danmu-window', async (event, danmuSettings) => {
+  const settings = JSON.parse(danmuSettings)
+  if (danmuWindow == null) {
+    danmuWindow = new BrowserWindow({
+      width: settings.display.size.width,
+      height: 800,
+      x: 0,
+      y: 0,
+      show: false,
+      autoHideMenuBar: true,
+      menuBarVisible: false,
+      frame: false,
+      resizable: false,
+      ...(process.platform === 'linux' ? { icon } : {}),
+      webPreferences: {
+        preload: join(__dirname, '../preload/index.js'),
+        sandbox: false
+      }
+    })
+
+    danmuWindow.on('ready-to-show', () => {
+      danmuWindow.show()
+    })
+    if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+      danmuWindow.loadURL(process.env['ELECTRON_RENDERER_URL'] + '/#/danmu')
+    } else {
+      danmuWindow.loadFile(join(__dirname, '../renderer/index.html'))
+    }
+  }
+
 });

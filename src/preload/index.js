@@ -21,5 +21,5 @@ if (process.contextIsolated) {
 
 // 暴露获取显示器信息的方法
 contextBridge.exposeInMainWorld('electronAPI', {
-  getDisplayInfo: () => ipcRenderer.invoke('get-display-info')
+  getDisplayInfo: () => ipcRenderer.invoke('get-display-info'),
 });

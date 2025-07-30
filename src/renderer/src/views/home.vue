@@ -133,7 +133,7 @@
                                 <el-option v-for="item in displays" :key="item.id" :label="item.label"
                                     :value="item.id" />
                             </el-select>
-                            <el-icon @click="refreshDisplayInfo"><i-ep-Refresh/></el-icon>
+                            <el-icon @click="refreshDisplayInfo"><i-ep-Refresh /></el-icon>
                         </div>
                     </div>
                 </div>
@@ -266,20 +266,27 @@ const handleLogin = () => {
     // window.electron.ipcRenderer.send('login')
 }
 
+
+const danmuInfo = reactive(store.danmuSettings)
+
 //弹幕设置
 const handlePreview = () => {
     // window.electron.ipcRenderer.send('preview')
 }
 
 // 保存弹幕设置
-const handleSave = () => {
-  store.saveDanmuSettings(danmuInfo)
-  ElMessage.success('设置保存成功')
+const handleSave = async () => {
+    store.saveDanmuSettings(danmuInfo)
+    ElMessage.success('设置保存成功')
+    console.log(electron)
+    electron.ipcRenderer.invoke('show-danmu-window', JSON.stringify(danmuInfo))
+
+    //   showDanmuWindow: (danmuSettings) => ipcRenderer.send('show-danmu-window',danmuSettings)
+    //   await window.electronAPI.showDanmuWindow();
 }
 //弹幕信息
 
 
-const danmuInfo = reactive(store.danmuSettings)
 
 // 显示器信息
 const displays = ref([]);
@@ -298,10 +305,10 @@ async function fetchDisplayInfo() {
 
 // 刷新显示器信息
 async function refreshDisplayInfo() {
-    try{
+    try {
         await fetchDisplayInfo();
         ElMessage.success('刷新成功')
-    }catch(err){
+    } catch (err) {
         console.error('刷新显示器信息失败:', err);
         ElMessage.error('刷新失败')
     }
@@ -352,7 +359,7 @@ onUnmounted(clearTimer)
     text-align: center;
 }
 
-.setting-container{
+.setting-container {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 20px 30px;
