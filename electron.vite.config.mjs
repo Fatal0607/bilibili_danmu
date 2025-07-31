@@ -28,9 +28,14 @@ export default defineConfig({
     server: {
       proxy: {
         '/api': {
-          target: 'http://uat.crm.xuexiluxian.cn',
+          target: 'https://api.live.bilibili.com',
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api/, '')
+        },
+        '/workers': {
+          target: 'https://workers.laplace.cn',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/workers/, '')
         }
       }
     },

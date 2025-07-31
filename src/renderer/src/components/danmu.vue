@@ -1,6 +1,6 @@
 <template>
     <div class="danmu-container" :style="`height: ${height}px;`">
-       这个是弹幕窗口,高度为{{height}}px
+       
     </div>
 </template>
 
@@ -8,6 +8,7 @@
     import { ref } from 'vue'
     import { useStore } from '@store'
     const store = useStore()
+    
     const props = defineProps({
         height: {
             type: Number,
@@ -17,7 +18,8 @@
 </script>
 <style scoped>
     .danmu-container {
-        width: 100%;
-        background-color: transparent;
+        width: 100dvw;
+        height: 100dvh;
+        /* background-color: transparent; */
     }
 </style>

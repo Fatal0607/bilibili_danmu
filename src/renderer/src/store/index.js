@@ -13,12 +13,13 @@ export const useStore = defineStore('storeId', {
     state:  () => {
         return {
             danmuSettings: {
-                fontSize: 16,
+                fontSize: 24,
                 color: '#ffffff',
                 opacity: 0.8,
                 displayArea: 0.5,
                 display: null,
-                speed: 10
+                speed: 200,
+                backgroundOpacity: 1,
             }
         }
     },

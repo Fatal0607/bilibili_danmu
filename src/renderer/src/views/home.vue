@@ -52,8 +52,8 @@
                             </el-popover>
                         </div>
                         <div class="setting-item-content">
-                            <el-slider v-model="danmuInfo.fontSize" :min="10" :max="30" :step="1" />
-                            <el-text>{{ danmuInfo.fontSize }}</el-text>
+                            <el-slider v-model="danmuSettings.fontSize" :min="16" :max="60" :step="2" />
+                            <el-text>{{ danmuSettings.fontSize }}</el-text>
                         </div>
 
                     </div>
@@ -68,8 +68,8 @@
                             </el-popover>
                         </div>
                         <div class="setting-item-content">
-                            <el-color-picker v-model="danmuInfo.color" />
-                            <el-text>{{ danmuInfo.color }}</el-text>
+                            <el-color-picker v-model="danmuSettings.color" />
+                            <el-text>{{ danmuSettings.color }}</el-text>
                         </div>
                     </div>
                     <div class="setting-item">
@@ -83,8 +83,8 @@
                             </el-popover>
                         </div>
                         <div class="setting-item-content">
-                            <el-slider v-model="danmuInfo.opacity" :min="0" :max="1" :step="0.01" />
-                            <el-text>{{ danmuInfo.opacity }}</el-text>
+                            <el-slider v-model="danmuSettings.opacity" :min="0" :max="1" :step="0.01" />
+                            <el-text>{{ danmuSettings.opacity }}</el-text>
                         </div>
                     </div>
                     <div class="setting-item">
@@ -98,23 +98,23 @@
                             </el-popover>
                         </div>
                         <div class="setting-item-content">
-                            <el-slider v-model="danmuInfo.displayArea" :min="0.1" :max="1" :step="0.1" />
-                            <el-text>{{ danmuInfo.displayArea }}</el-text>
+                            <el-slider v-model="danmuSettings.displayArea" :min="0.1" :max="1" :step="0.1" />
+                            <el-text>{{ danmuSettings.displayArea }}</el-text>
                         </div>
                     </div>
                     <div class="setting-item">
                         <div class="setting-item-content">
                             <el-text>弹幕滚动速度</el-text>
                             <el-popover placement="top-start" title="弹幕滚动速度" :width="200" trigger="hover"
-                                content="用于设置弹幕滚动速度，单位为秒，例如 10 就是 从右侧滚动到左侧消失需要 10 秒。">
+                                content="用于设置弹幕滚动速度，单位为每秒移动的像素数，数值越大速度越快">
                                 <template #reference>
                                     <el-icon><i-ep-InfoFilled /></el-icon>
                                 </template>
                             </el-popover>
                         </div>
                         <div class="setting-item-content">
-                            <el-slider v-model="danmuInfo.speed" :min="2" :max="30" :step="1" />
-                            <el-text>{{ danmuInfo.speed }}</el-text>
+                            <el-slider v-model="danmuSettings.speed" :min="40" :max="600" :step="20" />
+                            <el-text>{{ danmuSettings.speed }}</el-text>
                         </div>
                     </div>
                     <div class="setting-item">
@@ -128,12 +128,27 @@
                             </el-popover>
                         </div>
                         <div class="setting-item-content">
-                            <el-select v-model="danmuInfo.display" placeholder="请选择显示器" value-key="id"
+                            <el-select v-model="danmuSettings.display" placeholder="请选择显示器" value-key="id"
                                 style="width: 240px">
                                 <el-option v-for="item in displays" :key="item.id" :label="item.label"
                                     :value="item.id" />
                             </el-select>
                             <el-icon @click="refreshDisplayInfo"><i-ep-Refresh /></el-icon>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-item-content">
+                            <el-text>弹幕窗口背景透明度</el-text>
+                            <el-popover placement="top-start" title="弹幕窗口背景透明度" :width="200" trigger="hover"
+                                content="用于设置弹幕窗口的背景透明度">
+                                <template #reference>
+                                    <el-icon><i-ep-InfoFilled /></el-icon>
+                                </template>
+                            </el-popover>
+                        </div>
+                        <div class="setting-item-content">
+                            <el-slider v-model="danmuSettings.backgroundOpacity" :min="0" :max="1" :step="0.1" />
+                            <el-text>{{ danmuSettings.backgroundOpacity }}</el-text>
                         </div>
                     </div>
                 </div>
@@ -160,7 +175,7 @@ const ConnectionState = {
     CONNECTED: 'connected'   // 已连接
 }
 
-const roomId = ref('')
+const roomId = ref('923833')
 const connectionState = ref(ConnectionState.IDLE)
 const errorMessage = ref('')
 
@@ -191,10 +206,34 @@ const isConnecting = computed(() =>
     connectionState.value === ConnectionState.CONNECTING
 )
 
-// 连接处理函数
-let connectTimer = null
 
-const handleConnect = () => {
+// 获取真实房间号
+async function getRoomId(shortId) {
+    try {
+        const response = await fetch(`/api/room/v1/Room/room_init?id=${shortId}`);
+        const data = await response.json();
+        console.log("获取真实房间号", data.data.room_id);
+        return data.data.room_id;
+    } catch (error) {
+        throw new Error('获取房间信息失败: ' + error.message);
+    }
+}
+
+// 获取消息流服务器和密钥
+async function getDanmuInfo(roomId) {
+    try {
+        const response = await fetch(`/workers/bilibili/room-conn-info/${roomId}`);
+        const data = await response.json();
+        return data.data;
+    } catch (error) {
+        throw new Error('获取弹幕服务器信息失败: ' + error.message);
+    }
+}
+
+
+const danmuSettings = reactive(store.danmuSettings)
+
+const handleConnect = async () => {
     // 验证输入
     if (!validateRoomId()) return
 
@@ -202,15 +241,27 @@ const handleConnect = () => {
     connectionState.value = ConnectionState.CONNECTING
     errorMessage.value = ''
 
-    // 模拟连接过程
-    connectTimer = setTimeout(() => {
+    // 连接过程
+    try {
+        window.electronAPI.openDanMuWindow(JSON.stringify(danmuSettings))
+        const realyRoomId = await getRoomId(roomId.value)
+        const danmuInfo = await getDanmuInfo(realyRoomId)
+        console.log("获取消息流服务器和密钥", danmuInfo);
+        await window.electronAPI.connectToRoom(danmuInfo,realyRoomId)
         connectionState.value = ConnectionState.CONNECTED
         ElMessage({
             message: `成功连接房间：${roomId.value}`,
             type: 'success',
             plain: true,
         })
-    }, 1500)
+    } catch (error) {
+        connectionState.value = ConnectionState.IDLE
+        ElMessage({
+            message: `连接失败：${error.message}`,
+            type: 'error',
+            plain: true,
+        })
+    }
 }
 
 // 房间号验证
@@ -241,18 +292,8 @@ const validateRoomId = () => {
 // 断开连接
 const handleDisconnect = () => {
     connectionState.value = ConnectionState.IDLE
-    clearTimer()
+    window.electronAPI.disconnectFromRoom()
 }
-
-
-// 清理定时器
-const clearTimer = () => {
-    if (connectTimer) {
-        clearTimeout(connectTimer)
-        connectTimer = null
-    }
-}
-
 
 
 const userInfo = reactive({
@@ -267,22 +308,21 @@ const handleLogin = () => {
 }
 
 
-const danmuInfo = reactive(store.danmuSettings)
-
-//弹幕设置
-const handlePreview = () => {
-    // window.electron.ipcRenderer.send('preview')
+//发送预览弹幕
+const handlePreview = async () => {
+    const res = await window.electronAPI.previewDanmu()
+    ElMessage({
+        message: res.message,
+        type: res.type,
+        plain: true,
+    })
 }
 
 // 保存弹幕设置
 const handleSave = async () => {
-    store.saveDanmuSettings(danmuInfo)
+    store.saveDanmuSettings(danmuSettings)
+    window.electronAPI.changeDanmuSettings(JSON.stringify(danmuSettings))
     ElMessage.success('设置保存成功')
-    console.log(electron)
-    electron.ipcRenderer.invoke('show-danmu-window', JSON.stringify(danmuInfo))
-
-    //   showDanmuWindow: (danmuSettings) => ipcRenderer.send('show-danmu-window',danmuSettings)
-    //   await window.electronAPI.showDanmuWindow();
 }
 //弹幕信息
 
@@ -297,7 +337,7 @@ async function fetchDisplayInfo() {
         const info = await window.electronAPI.getDisplayInfo();
         console.log(info)
         displays.value = info.displays;
-        danmuInfo.display = info.primaryDisplay;
+        danmuSettings.display = info.primaryDisplay.id;
     } catch (error) {
         console.error('获取显示器信息失败:', error);
     }
@@ -319,7 +359,7 @@ onMounted(() => {
 });
 
 // 组件卸载时清理
-onUnmounted(clearTimer)
+// onUnmounted(clearTimer)
 </script>
 
 <style scoped>
@@ -328,6 +368,8 @@ onUnmounted(clearTimer)
     max-width: 100vw;
     margin: 0 auto;
     padding: 20px;
+    overflow: hidden;
+    user-select: none;
 }
 
 .title {
