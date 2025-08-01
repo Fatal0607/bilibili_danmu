@@ -41,9 +41,9 @@ function createWindow() {
     }
   })
   // 方法1：创建时自动打开开发者工具
-  mainWindow.webContents.openDevTools({
-    mode: 'bottom' // 分离式窗口
-  })
+  // mainWindow.webContents.openDevTools({
+  //   mode: 'bottom' // 分离式窗口
+  // })
   // 存储主窗口 id
   mainWindowId = mainWindow.id;
   // 初始获取显示器信息
@@ -163,6 +163,9 @@ function creatDanmuWindow(settings) {
   danmuWindow.on('ready-to-show', () => {
     danmuWindow.show()
   })
+    danmuWindow.webContents.openDevTools({
+    mode: 'detach' // 分离式窗口
+  })
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
     danmuWindow.loadURL(process.env['ELECTRON_RENDERER_URL'] + '/#/danmu')
   } else {
@@ -171,8 +174,10 @@ function creatDanmuWindow(settings) {
 }
 
 ipcMain.on('show-danmu-window', async (event, danmuSettings) => {
-  const settings = JSON.parse(danmuSettings)
-  creatDanmuWindow(settings)
+  if (danmuWindow === null) {
+    const settings = JSON.parse(danmuSettings)
+    creatDanmuWindow(settings)
+  }
 });
 
 ipcMain.on('change-danmu-settings', (event, danmuSettings) => {
@@ -189,7 +194,7 @@ ipcMain.on('change-danmu-settings', (event, danmuSettings) => {
     danmuWindow.setPosition(display.bounds.x, display.bounds.y);
     danmuWindow.webContents.send('change-danmu-settings', danmuSettings)
   }
-  
+
 })
 
 
@@ -208,14 +213,17 @@ ipcMain.handle('preview-danmu', async () => {
 });
 
 ipcMain.handle('connect-to-room', async (event, danmuInfo, roomId) => {
+  console.log("connect-to-room", danmuWindow)
   if (danmuWindow == null) {
     throw new Error("弹幕窗口未创建")
+  } else {
+    danmuWindow.webContents.send('connect-to-room', danmuInfo, roomId)
+    return {
+      type: "success",
+      message: "连接弹幕服务器成功"
+    }
   }
-  danmuWindow.webContents.send('connect-to-room', danmuInfo, roomId)
-  return {
-    type: "success",
-    message: "连接弹幕服务器成功"
-  }
+
 });
 
 ipcMain.on('disconnect-from-room', () => {
@@ -227,5 +235,6 @@ ipcMain.on('disconnect-from-room', () => {
 ipcMain.on('close-danmu-window', () => {
   if (danmuWindow !== null) {
     danmuWindow.close()
+    danmuWindow = null
   }
 })

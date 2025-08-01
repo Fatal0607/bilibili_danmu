@@ -7,7 +7,7 @@
             <el-card class="control-card" header="连接直播间" style="min-height: 200px;width: 100%;">
                 <el-form @submit.prevent="handleConnect">
                     <el-input v-model="roomId" placeholder="请输入房间号" clearable :disabled="isConnectingOrConnected"
-                        @keyup.enter="handleConnect">
+                        @keyup.enter="handleConnect" style="width: 240px;">
                         <template #prepend>房间号</template>
                     </el-input>
 
@@ -175,7 +175,7 @@ const ConnectionState = {
     CONNECTED: 'connected'   // 已连接
 }
 
-const roomId = ref('923833')
+const roomId = ref('1002320')
 const connectionState = ref(ConnectionState.IDLE)
 const errorMessage = ref('')
 
@@ -222,7 +222,7 @@ async function getRoomId(shortId) {
 // 获取消息流服务器和密钥
 async function getDanmuInfo(roomId) {
     try {
-        const response = await fetch(`/workers/bilibili/room-conn-info/${roomId}`);
+        const response = await fetch(`/workers/bilibili/room-conn-info/${roomId}?loginSync=b9zkt47rz2JRogFPZxfvrQ%40mmT45C1eVwT9eFcnELt8rt`);
         const data = await response.json();
         return data.data;
     } catch (error) {

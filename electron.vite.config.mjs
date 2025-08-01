@@ -22,7 +22,8 @@ export default defineConfig({
       alias: {
         '@renderer': resolve('src/renderer/src'),
         '@store': resolve('src/renderer/src/store'),
-        '@components': resolve('src/renderer/src/components')
+        '@components': resolve('src/renderer/src/components'),
+        '@untils': resolve('src/renderer/src/untils'),
       }
     },
     server: {

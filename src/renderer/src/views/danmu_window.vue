@@ -2,10 +2,15 @@
     <div class="danmu-window" :style="`background-color: rgba(0,0,0,${danmuSettings.backgroundOpacity});`">
         <vue-danmaku ref="danmakuRef" style="height: 100dvh;" v-model:danmus="danmuList" :speeds="danmuSettings.speed">
             <template #danmu="{ danmu }">
-                <div class="danmu-item"
+                <div class="danmu-item" v-if="danmu.type === 'danmu'" :class="`uid-${danmu.uid}`"
                     :style="`font-size: ${danmuSettings.fontSize}px; color: ${danmuSettings.color};opacity: ${danmuSettings.opacity};`">
                     <el-avatar :src="danmu.avatar" :size="danmuSettings.fontSize * 1.2" />
-                    <span>{{ danmu.name }}：{{ danmu.text }}</span>
+                    <span class="danmu-name">{{ danmu.name }}：<span class="danmu-text">{{ danmu.text }}</span></span>
+                </div>
+                <div class="into-item" v-if="danmu.type === 'into'" :class="`uid-${danmu.uid}`"
+                    :style="`font-size: ${danmuSettings.fontSize}px; color: ${danmuSettings.color};opacity: ${danmuSettings.opacity};`">
+                    <el-avatar :src="danmu.avatar" :size="danmuSettings.fontSize * 1.2" />
+                   <span class="danmu-name">{{ danmu.name }}<span class="danmu-text">{{ danmu.text }}</span></span>
                 </div>
             </template>
         </vue-danmaku>
@@ -19,6 +24,10 @@ import vueDanmaku from 'vue-danmaku'
 
 import pako from 'pako'
 
+import { parseBilibiliPB } from '@untils/interact_word_v2_parser.js'
+
+import { throttle } from 'throttle-debounce';
+
 const danmuList = ref([])
 
 const danmuSettings = ref(useStore().danmuSettings)
@@ -31,7 +40,7 @@ onMounted(async () => {
 })
 
 electron.ipcRenderer.on('preview-danmu', () => {
-    danmakuRef.value.insert({ name: '用户1', text: '这是一条预览弹幕', avatar: "https://i1.hdslb.com/bfs/face/2a2b3c81e92fb1ac798cb0ed66f2cfef9cf42d99.jpg" })
+    danmakuRef.value.insert({ type: 'danmu', name: '用户1', text: '这是一条预览弹幕', avatar: "https://i1.hdslb.com/bfs/face/2a2b3c81e92fb1ac798cb0ed66f2cfef9cf42d99.jpg" })
 })
 
 electron.ipcRenderer.on('change-danmu-settings', (event, settings) => {
@@ -130,21 +139,45 @@ class DanmuExtractor {
 
 // 初始化弹幕提取器
 const danmuExtractor = new DanmuExtractor();
-
+// 添加进入直播间信息
+const throttleFunc = throttle(5000, (uname, avatar,uid) => {
+    danmakuRef.value.insert({ type: 'into', name: uname, text: '进入了直播间', avatar: avatar,uid:uid })
+})
 // 监听弹幕消息
-danmuExtractor.on('MsgData', (content) => {
-    // console.log("接收到的数据", content)
+danmuExtractor.on('MsgData', async (content) => {
+
     if (content.cmd === 'DANMU_MSG') {
+        console.log(content)
         const sendUser = content.info[0][15]?.user || null;
-        const userName = content.info[2][1]  || '';
+        const userName = content.info[2][1] || '';
         const message = content.info[1] || '';
-        console.log("收到弹幕", userName, sendUser, message);
-        if(danmakuRef.value){
-            danmakuRef.value.insert({ name: userName, text: message, avatar: sendUser?.base?.face || userName })
+        if (danmakuRef.value) {
+            danmakuRef.value.insert({ type: 'danmu', name: userName, text: message, avatar: sendUser?.base?.face || userName,uid:sendUser?.uid })
+        }
+    }
+    //此处处理互动消息   
+    if (content.cmd === 'INTERACT_WORD_V2') {
+        try {
+            const interactWord = await parseBilibiliPB(content.data.pb)
+
+            if (interactWord.msgType === '1') {
+
+                const avatar = interactWord?.uinfo?.base?.face || '';
+                const uname = interactWord?.uname || '';
+                const uid = interactWord?.uinfo?.uid || '';
+                if (danmakuRef.value) {
+                    //添加进入直播间的弹幕，使用节流函数，防止进入直播间人数过多会导致频繁添加
+                    throttleFunc(uname,avatar,uid)
+                }
+            }
+        } catch (err) {
+            console.error(err)
         }
     }
 
 });
+
+
 
 // 生成鉴权包
 function generateCertificate(roomId, token) {
@@ -153,9 +186,9 @@ function generateCertificate(roomId, token) {
     const type = 7;
     const sequence = 2;
     const body = JSON.stringify({
-        uid: 0,
+        uid: 18755900,
         roomid: roomId,
-        protover: 2,
+        protover: 0,
         buvid: '',
         platform: 'web',
         type: 2,
@@ -274,5 +307,24 @@ function disconnect() {
 .danmu-item {
     display: flex;
     align-items: center;
+}
+
+.into-item {
+    display: flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 100px;
+    background: linear-gradient(135deg,#13F1FC,#0470DC);
+}
+.uid-18755900{
+    padding: 4px 10px !important;
+    border-radius: 100px !important;
+    background: linear-gradient(135deg,#3B2667,#BC78EC) !important;
+}
+.uid-18755900 .danmu-name{
+    color:  #FD6E6A !important;
+}
+.uid-18755900 .danmu-text{
+    color:  #FFC600 !important;
 }
 </style>
