@@ -163,20 +163,27 @@ function creatDanmuWindow(settings) {
   danmuWindow.on('ready-to-show', () => {
     danmuWindow.show()
   })
-    danmuWindow.webContents.openDevTools({
-    mode: 'detach' // 分离式窗口
-  })
+  //   danmuWindow.webContents.openDevTools({
+  //   mode: 'detach' // 分离式窗口
+  // })
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
     danmuWindow.loadURL(process.env['ELECTRON_RENDERER_URL'] + '/#/danmu')
   } else {
-    danmuWindow.loadFile(join(__dirname, '../renderer/index.html'))
+    danmuWindow.loadFile(join(__dirname, '../renderer/index.html'), {
+      hash: '/danmu'
+    })
   }
 }
 
 ipcMain.on('show-danmu-window', async (event, danmuSettings) => {
   if (danmuWindow === null) {
     const settings = JSON.parse(danmuSettings)
-    creatDanmuWindow(settings)
+    try{
+      creatDanmuWindow(settings)
+    }catch(err){
+      console.log(err)
+    }
+    
   }
 });
 
@@ -213,7 +220,6 @@ ipcMain.handle('preview-danmu', async () => {
 });
 
 ipcMain.handle('connect-to-room', async (event, danmuInfo, roomId) => {
-  console.log("connect-to-room", danmuWindow)
   if (danmuWindow == null) {
     throw new Error("弹幕窗口未创建")
   } else {

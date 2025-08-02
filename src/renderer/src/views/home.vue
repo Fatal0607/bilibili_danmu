@@ -166,8 +166,6 @@ import { ElMessage } from 'element-plus'
 import { useStore } from '@store'
 const store = useStore()
 
-console.log(store.danmuSettings)
-
 // 连接状态枚举
 const ConnectionState = {
     IDLE: 'idle',       // 空闲状态
@@ -175,7 +173,7 @@ const ConnectionState = {
     CONNECTED: 'connected'   // 已连接
 }
 
-const roomId = ref('1002320')
+const roomId = ref(store.roomId)
 const connectionState = ref(ConnectionState.IDLE)
 const errorMessage = ref('')
 
@@ -210,7 +208,7 @@ const isConnecting = computed(() =>
 // 获取真实房间号
 async function getRoomId(shortId) {
     try {
-        const response = await fetch(`/api/room/v1/Room/room_init?id=${shortId}`);
+        const response = await fetch(`https://api.live.bilibili.com/room/v1/Room/room_init?id=${shortId}`);
         const data = await response.json();
         console.log("获取真实房间号", data.data.room_id);
         return data.data.room_id;
@@ -222,7 +220,7 @@ async function getRoomId(shortId) {
 // 获取消息流服务器和密钥
 async function getDanmuInfo(roomId) {
     try {
-        const response = await fetch(`/workers/bilibili/room-conn-info/${roomId}?loginSync=b9zkt47rz2JRogFPZxfvrQ%40mmT45C1eVwT9eFcnELt8rt`);
+        const response = await fetch(`https://workers.laplace.cn/bilibili/room-conn-info/${roomId}?loginSync=b9zkt47rz2JRogFPZxfvrQ%40mmT45C1eVwT9eFcnELt8rt`);
         const data = await response.json();
         return data.data;
     } catch (error) {
@@ -248,6 +246,7 @@ const handleConnect = async () => {
         const danmuInfo = await getDanmuInfo(realyRoomId)
         console.log("获取消息流服务器和密钥", danmuInfo);
         await window.electronAPI.connectToRoom(danmuInfo,realyRoomId)
+        store.changeRoomId(roomId.value)
         connectionState.value = ConnectionState.CONNECTED
         ElMessage({
             message: `成功连接房间：${roomId.value}`,

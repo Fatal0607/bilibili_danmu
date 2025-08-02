@@ -12,20 +12,24 @@ async function fetchPrimaryDisplay() {
 export const useStore = defineStore('storeId', {
     state:  () => {
         return {
+            roomId: '1002320',
             danmuSettings: {
-                fontSize: 24,
-                color: '#ffffff',
+                fontSize: 28,
+                color: '#f8f8f8',
                 opacity: 0.8,
-                displayArea: 0.5,
+                displayArea: 0.3,
                 display: null,
                 speed: 200,
-                backgroundOpacity: 1,
+                backgroundOpacity: 0.3,
             }
         }
     },
     actions: {
         saveDanmuSettings(settings) {
             this.danmuSettings = { ...settings };
+        },
+        changeRoomId(newRoomId) {
+            this.roomId = newRoomId;
         }
     },
     persist: true,
