@@ -1,19 +1,34 @@
 <template>
     <div class="danmu-window" :style="`background-color: rgba(0,0,0,${danmuSettings.backgroundOpacity});`">
-        <vue-danmaku ref="danmakuRef" style="height: 100dvh;" v-model:danmus="danmuList" :speeds="danmuSettings.speed">
+        <vue-danmaku ref="danmakuRef" class="danmaku-container" v-model:danmus="danmuList"
+            :speeds="danmuSettings.speed">
             <template #danmu="{ danmu }">
                 <div class="danmu-item" v-if="danmu.type === 'danmu'" :class="`uid-${danmu.uid}`"
                     :style="`font-size: ${danmuSettings.fontSize}px; color: ${danmuSettings.color};opacity: ${danmuSettings.opacity};`">
                     <el-avatar :src="danmu.avatar" :size="danmuSettings.fontSize * 1.2" />
                     <span class="danmu-name">{{ danmu.name }}：<span class="danmu-text">{{ danmu.text }}</span></span>
                 </div>
-                <div class="into-item" v-if="danmu.type === 'into'" :class="`uid-${danmu.uid}`"
-                    :style="`font-size: ${danmuSettings.fontSize}px; color: ${danmuSettings.color};opacity: ${danmuSettings.opacity};`">
-                    <el-avatar :src="danmu.avatar" :size="danmuSettings.fontSize * 1.2" />
-                   <span class="danmu-name">{{ danmu.name }}<span class="danmu-text">{{ danmu.text }}</span></span>
-                </div>
+
             </template>
         </vue-danmaku>
+        <div class="into-container">
+            <DynamicScroller :items="intoList" :min-item-size="100" class="into-scroller" ref="intoScroller">
+                <template v-slot="{ item, index, active }">
+                    <DynamicScrollerItem :item="item" :active="active" :size-dependencies="[
+                        item.name,
+                    ]" :data-index="index" >
+                    <div class="into-item-container">
+                         <div class="into-item" :class="`uid-${item.uid}`"
+                            :style="`font-size: ${danmuSettings.intoFontSize}px;color: ${danmuSettings.color};opacity: ${danmuSettings.opacity};`">
+                            <el-avatar :src="item.avatar" :size="danmuSettings.fontSize * 1.2" style="flex-shrink: 0"/>
+                            <span class="danmu-name" :line-clamp="1">{{ item.name }}<span class="danmu-text">进入了直播间</span></span>
+                        </div>
+                    </div>
+                       
+                    </DynamicScrollerItem>
+                </template>
+            </DynamicScroller>
+        </div>
     </div>
 </template>
 <script setup>
@@ -36,7 +51,6 @@ const danmakuRef = ref(null)
 
 onMounted(async () => {
     danmakuRef.value.play()
-
 })
 
 electron.ipcRenderer.on('preview-danmu', () => {
@@ -140,20 +154,41 @@ class DanmuExtractor {
 // 初始化弹幕提取器
 const danmuExtractor = new DanmuExtractor();
 // 添加进入直播间信息
-const throttleFunc = throttle(5000, (uname, avatar,uid) => {
-    danmakuRef.value.insert({ type: 'into', name: uname, text: '进入了直播间', avatar: avatar,uid:uid })
+const intoList = ref([])
+// const throttleFunc = throttle(5000, (uname, avatar, uid) => {
+//     danmakuRef.value.insert({ type: 'into', name: uname, text: '进入了直播间', avatar: avatar, uid: uid })
+// })
+
+// 用于存储最新未发送的弹幕
+let newDanmuList = []
+
+//将弹幕列表更新到主窗口,设置节流，1秒更新一次，并且为了减少数据量，每次只发送最新未发送的弹幕
+const updateDanmuList = throttle(1000, () => {
+    electron.ipcRenderer.send('update-danmu-list', newDanmuList)
+    newDanmuList = [] // 清空已发送的弹幕列表
 })
+
+// 创建变量用于存储是否已经发送链接成功的弹幕
+let isConnected = false
+
 // 监听弹幕消息
 danmuExtractor.on('MsgData', async (content) => {
-
+    if (!isConnected) {
+        danmakuRef.value.insert({ type: 'danmu', name: '系统', text: '已连接弹幕服务器', avatar: "https://youke1.picui.cn/s1/2025/08/02/688ddabe847cf.png" })
+        isConnected = true
+    }
     if (content.cmd === 'DANMU_MSG') {
         console.log(content)
         const sendUser = content.info[0][15]?.user || null;
         const userName = content.info[2][1] || '';
         const message = content.info[1] || '';
         if (danmakuRef.value) {
-            danmakuRef.value.insert({ type: 'danmu', name: userName, text: message, avatar: sendUser?.base?.face || userName,uid:sendUser?.uid })
+            danmakuRef.value.insert({ type: 'danmu', name: userName, text: message, avatar: sendUser?.base?.face || userName, uid: sendUser?.uid })
         }
+        //将弹幕添加到最新未发送的弹幕列表
+        let id = sendUser?.uid + '-' + Date.now()
+        newDanmuList.push({ sender: sendUser, message: message, id: id })
+        updateDanmuList()
     }
     //此处处理互动消息   
     if (content.cmd === 'INTERACT_WORD_V2') {
@@ -161,14 +196,12 @@ danmuExtractor.on('MsgData', async (content) => {
             const interactWord = await parseBilibiliPB(content.data.pb)
 
             if (interactWord.msgType === '1') {
-
                 const avatar = interactWord?.uinfo?.base?.face || '';
                 const uname = interactWord?.uname || '';
                 const uid = interactWord?.uinfo?.uid || '';
-                if (danmakuRef.value) {
-                    //添加进入直播间的弹幕，使用节流函数，防止进入直播间人数过多会导致频繁添加
-                    throttleFunc(uname,avatar,uid)
-                }
+                const id = uid + '-' + Date.now()
+                intoList.value.unshift({ name: uname, avatar: avatar, uid: uid, id: id })
+                
             }
         } catch (err) {
             console.error(err)
@@ -301,7 +334,13 @@ function disconnect() {
 .danmu-window {
     width: 100dvw;
     height: 100dvh;
-    /* background-color: #00000080; */
+    display: flex;
+    align-items: center;
+}
+
+.danmaku-container {
+    width: calc(100% - 500px);
+    height: 100vh;
 }
 
 .danmu-item {
@@ -309,22 +348,39 @@ function disconnect() {
     align-items: center;
 }
 
+.into-container {
+    width: 500px;
+    height: 100vh;
+    padding: 10px;
+}
+
+.into-scroller {
+    height: 100%;
+    /* 隐藏滚动条 */
+  scrollbar-width: none; /* Firefox */
+}
+.into-item-container{
+    padding: 0;
+}
 .into-item {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     padding: 4px 10px;
     border-radius: 100px;
-    background: linear-gradient(135deg,#13F1FC,#0470DC);
+    /* background: linear-gradient(135deg, #13F1FC, #0470DC); */
 }
-.uid-18755900{
+
+.uid-18755900 {
     padding: 4px 10px !important;
     border-radius: 100px !important;
-    background: linear-gradient(135deg,#3B2667,#BC78EC) !important;
+    background: linear-gradient(135deg, #3B2667, #BC78EC) !important;
 }
-.uid-18755900 .danmu-name{
-    color:  #FD6E6A !important;
+
+.uid-18755900 .danmu-name {
+    color: #FD6E6A !important;
 }
-.uid-18755900 .danmu-text{
-    color:  #FFC600 !important;
+
+.uid-18755900 .danmu-text {
+    color: #FFC600 !important;
 }
 </style>

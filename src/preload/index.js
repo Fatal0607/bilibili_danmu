@@ -28,4 +28,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   previewDanmu: () => ipcRenderer.invoke('preview-danmu'),
   connectToRoom: (danmuInfo,roomId) => ipcRenderer.invoke('connect-to-room', danmuInfo,roomId),
   disconnectFromRoom: () => ipcRenderer.send('disconnect-from-room'),
+  updateDanmuList: (list) => ipcRenderer.send('update-danmu-list', list),
 });

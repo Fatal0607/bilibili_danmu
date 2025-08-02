@@ -30,7 +30,8 @@
     "protobufjs": "^7.5.3",
     "throttle-debounce": "^5.0.2",
     "vue-danmaku": "^2.0.2",
-    "vue-router": "^4.5.1"
+    "vue-router": "^4.5.1",
+    "vue-virtual-scroller": "^2.0.0-beta.8"
   },
   "devDependencies": {
     "@electron-toolkit/eslint-config": "^2.0.0",

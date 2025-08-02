@@ -21,6 +21,9 @@ export const useStore = defineStore('storeId', {
                 display: null,
                 speed: 200,
                 backgroundOpacity: 0.3,
+                intoFontSize: 28,
+                // 弹幕窗口离顶部距离
+                danmuWindowTopDistance: 0,
             }
         }
     },

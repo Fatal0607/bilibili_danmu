@@ -29,6 +29,8 @@ function createWindow() {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
     width: 1200,
+    minWidth: 1200,
+    minHeight: 800,
     height: 800,
     show: false,
     autoHideMenuBar: true,
@@ -138,7 +140,7 @@ function creatDanmuWindow(settings) {
     width: display.size.width,  //弹幕窗口宽度 = 显示器宽度
     height: display.size.height * settings.displayArea,  //弹幕窗口高度 = 显示器高度 * 显示区域
     x: display.bounds.x,  //弹幕窗口x坐标 = 显示器x坐标
-    y: display.bounds.y,  //弹幕窗口y坐标 = 显示器y坐标
+    y: settings.danmuWindowTopDistance,  //弹幕窗口y坐标 = 弹幕窗口顶部距离
     show: false,
     autoHideMenuBar: true, // 自动隐藏菜单栏
     menuBarVisible: false, // 菜单栏不可见
@@ -198,7 +200,7 @@ ipcMain.on('change-danmu-settings', (event, danmuSettings) => {
   }
   if (danmuWindow !== null) {
     danmuWindow.setSize(display.size.width, display.size.height * settings.displayArea);
-    danmuWindow.setPosition(display.bounds.x, display.bounds.y);
+    danmuWindow.setPosition(display.bounds.x, settings.danmuWindowTopDistance);
     danmuWindow.webContents.send('change-danmu-settings', danmuSettings)
   }
 
@@ -242,5 +244,11 @@ ipcMain.on('close-danmu-window', () => {
   if (danmuWindow !== null) {
     danmuWindow.close()
     danmuWindow = null
+  }
+})
+
+ipcMain.on('update-danmu-list', (event, list) => {
+  if (mainWindowId !== null) {
+    BrowserWindow.fromId(mainWindowId).webContents.send('update-danmu-list', list)
   }
 })
